@@ -1,7 +1,9 @@
 try:
 	import tkinter as tk
+	from tkinter import font as tkFont
 except:
 	import Tkinter as tk
+	import tkFont
 import time
 import random
 import cv2
@@ -16,8 +18,8 @@ class Params:
 	def __init__(self):
 		self.base_dir = os.getcwd()
 		self.current = None
-		self.canvas_width = 800
-		self.canvas_height = 600
+		self.width = 800
+		self.height = 600
 		self.cell_size = 35
 		self.cells_for_player = 6
 		self.marginX = 25
@@ -61,6 +63,9 @@ class Params:
 		self.roll_id = 0
 		self.dice_pos = 0
 		self.active = None
+		self.toggleMenu = None
+		self.menuFont1 = None
+		self.rootFont1 = None
 	
 	def set_path(self):
 		j = 0
@@ -216,6 +221,15 @@ class Params:
 	
 	def change(self):
 		self.change()
+	
+	def toggleMenu(self):
+		self.toggleMenu()
+	
+	def styleButton(self, widget, i):
+		if i == 0:
+			widget.config(font = self.rootFont1, bg = "#aaaaaa", activebackground="#bbbbff", bd = 5, width = 10)
+		elif i == 1:
+			widget.config(font = self.menuFont1, bg = "#aaaaaa", activebackground="#bbbbff", bd = 5, width = 10)
 
 			
 class Board:
@@ -245,6 +259,9 @@ class Board:
 		self.players[self.dice_pos].expand()
 		params.change = self.change
 		#print(self.change)
+		self.font1 = tkFont.Font(root=root, size=20)
+		params.rootFont1 = self.font1
+		self.setGUI()
 		params.print_debug_entry_path("Board out off __init__ !")
 	
 	def keyEvent(self, event):
@@ -400,6 +417,20 @@ class Board:
 			self.board.append(self.arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.08) * cs, 1.5, 1.5, "#ffffff", "up"))
 			self.board.append(self.arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.15) * cs, 1.5, 1.5, "#cccc00", "up"))
 		params.print_debug_entry_path("	Board out off set_board !")
+	
+	def setGUI(self):
+		self.button1 = tk.Button(canvas, text = "Show Menu", command=self.toggle)
+		self.button1.place(x = self.dx + params.width - 200, y = 10)
+		params.styleButton(self.button1, 0)
+	
+	def toggle(self):
+		print(self.button1.cget)
+		print(self.button1.cget("text"))
+		if self.button1.cget("text") == "Show Menu":
+			self.button1.config(text = "Hide Menu")
+		elif self.button1.cget("text") == "Hide Menu":
+			self.button1.config(text = "Show Menu")
+		params.toggleMenu()
 	
 	def arrow(self, dx, dy, sx, sy, color, dir = "left"):
 		#params.print_debug_entry_path("	Board in arrow !", dx, dy, sx, sy, color, dir)
@@ -995,16 +1026,95 @@ class Dice:
 		print("dx_dy : ", self.dx, self.dy)
 		params.print_debug_entry_path("Dice out off move !")
 
+class GUI:
+	def __init__(self):
+		self.top = tk.Toplevel()
+		self.top.title("Menu")
+		self.top.focus_set()
+		self.top.lift()
+		self.top.attributes('-topmost', 'true')
+		self.top.geometry("+800+100")
+		self.font1 = tkFont.Font(root=self.top, size=20)
+		params.menuFont1 = self.font1 
+		self.mx = 125
+		self.my = 100
+		
+		self.master = tk.Canvas(self.top, width = 400, height = 400)
+		self.master.pack()
+		
+		#print("toplevel is created !")
+		self.menu()
+		self.top.withdraw()
+		self.hidden = True
+		params.toggleMenu = self.toggle
+	
+	def toggle(self):
+		if self.hidden == True:
+			self.top.deiconify()
+			self.hidden = False
+		else:
+			self.top.withdraw()
+			self.hidden = True
+	
+	def menu(self):
+		self.newGame = tk.Button(self.master, text="New Game", command= self.freshStartGame)
+		self.newGame.place(x = self.mx, y = self.my)
+		params.styleButton(self.newGame, 1)
+		
+		self.options = tk.Button(self.master, text="Options", command= self.freshStartGame)
+		self.options.place(x = self.mx, y = self.my+75)
+		params.styleButton(self.options, 1)
+		
+		self.help = tk.Button(self.master, text="Help", command= self.freshStartGame)
+		self.help.place(x = self.mx, y = self.my+150)
+		params.styleButton(self.help, 1)
+		
+		self.about = tk.Button(self.master, text="About", command= self.freshStartGame)
+		self.about.place(x = self.mx, y = self.my+225)
+		params.styleButton(self.about, 1)
+	
+	def showMenu(self):
+		pass
+	
+	def hideMenu(self):
+		pass
+	
+	def freshStartGame(self):
+		pass
+	
+	def Stop(self):
+		pass
+	
+	def Continue(self):	
+		pass
+	
+	def setAuto(self):
+		params.auto = True
+	
+	def unsetAuto(self):
+		params.auto = False
+	
+	def Options(self):
+		pass
+	
+	def showOptions(self):
+		pass
+	
+	def hideOptions(self):
+		pass
+
 
 params = Params()
 root = tk.Tk()
 root.title("my Ludo Game")
-canvas = tk.Canvas(root, width = params.canvas_width, height = params.canvas_height)
+canvas = tk.Canvas(root, width = params.width, height = params.height)
 canvas.pack()
-canvas.focus_set()
+#canvas.focus_set()
 params.setImages(canvas)
 
+gui = GUI()
 board = Board(params.marginX, params.marginY)
+
 #plr = Player(0, params.marginX, params.marginY, "#ff0000")
 #plr.expand()
 #dice = Dice()
