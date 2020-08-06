@@ -66,6 +66,7 @@ class Params:
 		self.toggleMenu = None
 		self.menuFont1 = None
 		self.rootFont1 = None
+		self.focused = True
 	
 	def set_path(self):
 		j = 0
@@ -222,14 +223,37 @@ class Params:
 	def change(self):
 		self.change()
 	
-	def toggleMenu(self):
-		self.toggleMenu()
-	
 	def styleButton(self, widget, i):
 		if i == 0:
 			widget.config(font = self.rootFont1, bg = "#aaaaaa", activebackground="#bbbbff", bd = 5, width = 10)
 		elif i == 1:
 			widget.config(font = self.menuFont1, bg = "#aaaaaa", activebackground="#bbbbff", bd = 5, width = 10)
+	
+	def toggle(self):
+		#print(self.button1.cget)
+		#print(self.button1.cget("text"))
+		if self.button1.cget("text") == "Show Menu":
+			self.button1.config(text = "Hide Menu")
+		elif self.button1.cget("text") == "Hide Menu":
+			self.button1.config(text = "Show Menu")
+		self.toggleMenu()
+		if self.focused:
+			self.focused = False
+		else:
+			self.focused = True
+	
+	def setGUI(self):
+		self.button1 = tk.Button(canvas, text = "Show Menu", command=self.toggle)
+		self.button1.place(x = self.marginX + params.width - 200, y = 10)
+		params.styleButton(self.button1, 0)
+		self.button1.bind("<Button-1>", self.clickIn)
+		self.button1.bind("<ButtonRelease-1>", self.clickOut)
+	
+	def clickIn(self, event):
+		print("clickIn!")
+	
+	def clickOut(self, event):
+		print("clickOut!")
 
 			
 class Board:
@@ -240,10 +264,10 @@ class Board:
 		#self.trail()
 		self.set_board()
 		self.player_pos = [
-		[params.marginX, params.marginY],
-		[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY],
-		[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY + (params.cells_for_player + 3) * params.cell_size],
-		[params.marginX, params.marginY + (params.cells_for_player + 3) * params.cell_size]
+			[params.marginX, params.marginY],
+			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY],
+			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY + (params.cells_for_player + 3) * params.cell_size],
+			[params.marginX, params.marginY + (params.cells_for_player + 3) * params.cell_size]
 		]
 		self.players = [
 			Player(0, self.player_pos[0][0], self.player_pos[0][1], "#ff0000"),
@@ -261,11 +285,13 @@ class Board:
 		#print(self.change)
 		self.font1 = tkFont.Font(root=root, size=20)
 		params.rootFont1 = self.font1
-		self.setGUI()
 		params.print_debug_entry_path("Board out off __init__ !")
 	
 	def keyEvent(self, event):
 		params.print_debug_entry_path("Board in keyEvent !")
+		if not params.focused:
+			params.print_debug_entry_path("Board out off keyEvent because cnavas is not focused!")
+			return
 		#print(event.char)
 		#print(event.keycode)
 		#print(event.char == 'r')
@@ -417,20 +443,6 @@ class Board:
 			self.board.append(self.arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.08) * cs, 1.5, 1.5, "#ffffff", "up"))
 			self.board.append(self.arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.15) * cs, 1.5, 1.5, "#cccc00", "up"))
 		params.print_debug_entry_path("	Board out off set_board !")
-	
-	def setGUI(self):
-		self.button1 = tk.Button(canvas, text = "Show Menu", command=self.toggle)
-		self.button1.place(x = self.dx + params.width - 200, y = 10)
-		params.styleButton(self.button1, 0)
-	
-	def toggle(self):
-		print(self.button1.cget)
-		print(self.button1.cget("text"))
-		if self.button1.cget("text") == "Show Menu":
-			self.button1.config(text = "Hide Menu")
-		elif self.button1.cget("text") == "Hide Menu":
-			self.button1.config(text = "Show Menu")
-		params.toggleMenu()
 	
 	def arrow(self, dx, dy, sx, sy, color, dir = "left"):
 		#params.print_debug_entry_path("	Board in arrow !", dx, dy, sx, sy, color, dir)
@@ -818,6 +830,9 @@ class Player:
 	
 	def makeMove(self, event):
 		params.print_debug_entry_path("Player in makeMove !", event)
+		if not params.focused:
+			params.print_debug_entry_path("Player is out off makeMove because canvas is not focused!")
+			return
 		print("Player in makeMove !", event)
 		if params.dice_roll == -1:
 			params.print_debug_entry_path("Player out off makeMove with return !")
@@ -1033,13 +1048,22 @@ class GUI:
 		self.top.focus_set()
 		self.top.lift()
 		self.top.attributes('-topmost', 'true')
-		self.top.geometry("+800+100")
+		x=root.winfo_rootx()+params.marginX
+		y=root.winfo_rooty()+params.marginY
+		x1=x+numberOfCellsInRow*params.cellSize
+		y1=y+numberOfCellsInRow*params.cellSize
+		self.top.geometry("+" + str(x1) + "+" + str(y) + "")
+		self.top.protocol("WM_DELETE_WINDOW", self.nothing)
+		self.top.protocol('WM_TAKE_FOCUS', self.focusIn())
+		#self.top.bind("FocusIn", self.focusIn)
+		self.top.bind("FocusOut", self.focusOut)
+		
 		self.font1 = tkFont.Font(root=self.top, size=20)
 		params.menuFont1 = self.font1 
-		self.mx = 125
+		self.mx = 75
 		self.my = 100
 		
-		self.master = tk.Canvas(self.top, width = 400, height = 400)
+		self.master = tk.Canvas(self.top, width = 300, height = 400)
 		self.master.pack()
 		
 		#print("toplevel is created !")
@@ -1047,6 +1071,15 @@ class GUI:
 		self.top.withdraw()
 		self.hidden = True
 		params.toggleMenu = self.toggle
+	
+	def focusIn(self):
+		print("focused !1")
+	
+	def focusOut(self):
+		print("out off focus !1")
+	
+	def nothing(self):
+		pass
 	
 	def toggle(self):
 		if self.hidden == True:
@@ -1103,13 +1136,20 @@ class GUI:
 	def hideOptions(self):
 		pass
 
+def on_focus_in(event):
+	#params.focused = True
+	print("Focused!0", event.widget)
+
+def on_focus_out(event):
+	#params.focused = False
+	print("out off focus!0", event.widget)
 
 params = Params()
 root = tk.Tk()
 root.title("my Ludo Game")
 canvas = tk.Canvas(root, width = params.width, height = params.height)
 canvas.pack()
-#canvas.focus_set()
+canvas.focus_set()
 params.setImages(canvas)
 
 gui = GUI()
@@ -1119,4 +1159,8 @@ board = Board(params.marginX, params.marginY)
 #plr.expand()
 #dice = Dice()
 
+params.setGUI()
+root.bind("<FocusIn>", on_focus_in)
+root.bind("<FocusOut>", on_focus_out)
+#root.protocol('WM_TAKE_FOCUS', on_focus_in())
 root.mainloop()
