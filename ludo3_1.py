@@ -807,6 +807,9 @@ class Player:
 		id = int(tags[0])
 		pid = id //4
 		pcid = int(id % 4)
+		if not pid == params.dice_pos:
+			params.print_debug_entry_path("Player out off makeMove with return because selected piece is not belong to current player !")
+			return
 		try:
 			pos = int(tags[2].split("@")[1])
 		except:
