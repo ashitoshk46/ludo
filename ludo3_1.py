@@ -10,6 +10,7 @@ import cv2
 import os
 from PIL import Image, ImageTk
 import numpy as np
+import test
 
 
 canvas = None
@@ -30,7 +31,7 @@ class Params:
 		self.player_compress = np.zeros((4, 4, 2), dtype = np.float32)
 		self.pieces = np.zeros((4, 4), dtype = np.uint16)
 		self.player_pos = np.zeros((4, 2), dtype = np.uint16)
-		self.win = np.zeros((4, 4), dtype = np.uint16)
+		self.win_pieces = [[], [], [], []]
 		self.piece_size = np.zeros((4, 4), dtype = np.uint16) #0]big size    #1]middle size    #2]small size
 		self.piece_multiples = np.zeros((4, 4), dtype = np.uint16) #0]Single    #1]Multipes
 		self.piece_pos_in_path = np.zeros((4, 4), dtype = np.uint16)
@@ -40,18 +41,7 @@ class Params:
 		self.win = np.zeros((4, self.cells_for_player - 1, 2), dtype = np.uint16)
 		self.set_path()
 		self.change = None
-		self.path_out = np.asarray([
-			1,
-			2 + self.cells_for_player * 2,
-			3 + self.cells_for_player * 4,
-			4 + self.cells_for_player * 6
-		], dtype = np.uint16)
-		self.path_safe = np.asarray([
-			1 + self.cells_for_player,
-			2 + self.cells_for_player * 3,
-			3 + self.cells_for_player * 5,
-			4 + self.cells_for_player * 7
-		], dtype = np.uint16)
+		self.set_extra_path()
 		self.set_position()
 		self.debug = False#True
 		if self.debug:
@@ -66,7 +56,54 @@ class Params:
 		self.toggleMenu = None
 		self.menuFont1 = None
 		self.rootFont1 = None
-		self.focused = True
+		self.menuFont2 = None
+		self.rootFont2 = None
+		self.menuFont3 = None
+		self.rootFont3 = None
+		self.menuFont4 = None
+		self.rootFont4 = None
+		self.focused = False
+		self.screen_width = None
+		self.screen_height = None
+		self.game_started = False
+		self.double = None
+	
+	def set_extra_path(self):
+		self.path_out = np.asarray([
+			1,
+			2 + self.cells_for_player * 2,
+			3 + self.cells_for_player * 4,
+			4 + self.cells_for_player * 6
+		], dtype = np.uint16)
+		
+		self.path_safe = np.asarray([
+			1 + self.cells_for_player,
+			2 + self.cells_for_player * 3,
+			3 + self.cells_for_player * 5,
+			4 + self.cells_for_player * 7
+		], dtype = np.uint16)
+		
+		for i in range(self.cells_for_player - 1):
+			self.win[0][i][0] = self.marginX + (i + 1) * self.cell_size
+			self.win[0][i][1] = self.marginY + (self.cells_for_player +1) * self.cell_size
+		for i in range(self.cells_for_player - 1):
+			self.win[1][i][0] = self.marginX + (self.cells_for_player + 1) * self.cell_size
+			self.win[1][i][1] = self.marginY + (i + 1) * self.cell_size
+		for i in range(self.cells_for_player - 1):
+			self.win[2][i][0] = self.marginX + (i + self.cells_for_player + 3) * self.cell_size
+			self.win[2][i][1] = self.marginY + (self.cells_for_player + 1) * self.cell_size
+		for i in range(self.cells_for_player - 1):
+			self.win[3][i][0] = self.marginX + (self.cells_for_player + 1) * self.cell_size
+			self.win[3][i][1] = self.marginY + (i + self.cells_for_player + 3)	 * self.cell_size
+	
+	def set_player_pos(self):
+		self.player_pos = [
+			[params.marginX, params.marginY],
+			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY],
+			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY + (params.cells_for_player + 3) * params.cell_size],
+			[params.marginX, params.marginY + (params.cells_for_player + 3) * params.cell_size]
+		]
+	
 	
 	def set_path(self):
 		j = 0
@@ -129,19 +166,6 @@ class Params:
 		self.path[j][1] = self.marginY + (self.cells_for_player + 1) * self.cell_size
 		j += 1
 		#print(self.path[self.cells_for_player * 8 + 3: self.cells_for_player * 8 + 4])
-		
-		for i in range(self.cells_for_player - 1):
-			self.win[0][i][0] = self.marginX + (i + 1) * self.cell_size
-			self.win[0][i][1] = self.marginY + (self.cells_for_player +1) * self.cell_size
-		for i in range(self.cells_for_player - 1):
-			self.win[1][i][0] = self.marginX + (self.cells_for_player + 1) * self.cell_size
-			self.win[1][i][1] = self.marginY + (i + 1) * self.cell_size
-		for i in range(self.cells_for_player - 1):
-			self.win[2][i][0] = self.marginX + (i + self.cells_for_player + 3) * self.cell_size
-			self.win[2][i][1] = self.marginY + (self.cells_for_player + 1) * self.cell_size
-		for i in range(self.cells_for_player - 1):
-			self.win[3][i][0] = self.marginX + (self.cells_for_player + 1) * self.cell_size
-			self.win[3][i][1] = self.marginY + (i + self.cells_for_player + 3)	 * self.cell_size
 	
 	def set_position(self):
 		  #position of piece in cell w.r.t to left top coerner pos of cell
@@ -229,6 +253,24 @@ class Params:
 		elif i == 1:
 			widget.config(font = self.menuFont1, bg = "#aaaaaa", activebackground="#bbbbff", bd = 5, width = 10)
 	
+	def styleLabel(self, widget, i):
+		if i == 0:
+			widget.config(font = self.rootFont2, bd = 5)
+		elif i == 1:
+			widget.config(font = self.menuFont2, bd = 5)
+	
+	def styleCheckbutton(self, widget, i):
+		if i == 0:
+			widget.config(font = self.rootFont3)
+		elif i == 1:
+			widget.config(font = self.menuFont3)
+	
+	def styleEntry(self, widget, i):
+		if i == 0:
+			widget.config(font = self.rootFont4, width = 4)
+		elif i == 1:
+			widget.config(font = self.menuFont4, width = 4)
+	
 	def toggle(self):
 		#print(self.button1.cget)
 		#print(self.button1.cget("text"))
@@ -243,8 +285,8 @@ class Params:
 			self.focused = True
 	
 	def setGUI(self):
-		self.button1 = tk.Button(canvas, text = "Show Menu", command=self.toggle)
-		self.button1.place(x = self.marginX + params.width - 200, y = 10)
+		self.button1 = tk.Button(canvas, text = "Hide Menu", command=self.toggle)
+		self.button1.place(x = self.marginX + params.width - 225, y = 10)
 		params.styleButton(self.button1, 0)
 		self.button1.bind("<Button-1>", self.clickIn)
 		self.button1.bind("<ButtonRelease-1>", self.clickOut)
@@ -255,28 +297,41 @@ class Params:
 	def clickOut(self, event):
 		print("clickOut!")
 
-			
+	
+class Int(tk.StringVar):
+	def get(self):
+		tmp = super().get()
+		if tmp == "":
+			return params.cells_for_player
+		else:
+			try:
+				return int(tmp)
+			except:
+				return params.cells_for_player
+	
+	def set(self, val):
+		try:
+			super().set(str(int(val)))
+		except:
+			super().set(str(params.cells_for_player))
+
+	
 class Board:
 	def __init__(self, dx, dy):
 		params.print_debug_entry_path("Board in __init__ !")
 		self.dx = dx
 		self.dy = dy
 		#self.trail()
+		self.dice = None
 		self.set_board()
-		self.player_pos = [
-			[params.marginX, params.marginY],
-			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY],
-			[params.marginX + (params.cells_for_player + 3) * params.cell_size, params.marginY + (params.cells_for_player + 3) * params.cell_size],
-			[params.marginX, params.marginY + (params.cells_for_player + 3) * params.cell_size]
-		]
+		params.set_player_pos()
 		self.players = [
-			Player(0, self.player_pos[0][0], self.player_pos[0][1], "#ff0000"),
-			Player(1, self.player_pos[1][0], self.player_pos[1][1], "#00ff00"),
-			Player(2, self.player_pos[2][0], self.player_pos[2][1], "#0000ff"),
-			Player(3, self.player_pos[3][0], self.player_pos[3][1], "#ffff00")
+			Player(0, "#ff0000"),
+			Player(1, "#00ff00"),
+			Player(2, "#0000ff"),
+			Player(3, "#ffff00")
 		]
-		self.dice = Dice(params.marginX, params.marginY)
-		canvas.bind("<Return>", self.enterEvent)
+		self.setDice()
 		canvas.bind("<Key>", self.keyEvent)
 		self.dice_pos = 0
 		params.dice_pos = 0
@@ -287,9 +342,24 @@ class Board:
 		params.rootFont1 = self.font1
 		params.print_debug_entry_path("Board out off __init__ !")
 	
+	def setDice(self):
+		self.dice = Dice(params.marginX, params.marginY)
+	
+	def delDice(self):
+		del(self.dice)
+	
+	def setPlayers(self):
+		self.players[0].repos()
+		self.players[1].repos()
+		self.players[2].repos()
+		self.players[3].repos()
+	
+	def delPlyers(self):
+		del(self.players)
+	
 	def keyEvent(self, event):
 		params.print_debug_entry_path("Board in keyEvent !")
-		if not params.focused:
+		if not params.focused and not params.game_started:
 			params.print_debug_entry_path("Board out off keyEvent because cnavas is not focused!")
 			return
 		#print(event.char)
@@ -309,17 +379,18 @@ class Board:
 				print("Only on out!")
 				print("pid : ", params.dice_pos, " pcid or rt[1] : ", rt[1])
 				print("in the home or rt[2]", rt[2])
-				if not (rt[2] > 0 and params.dice_roll == 5):
+				if not (len(rt[2]) > 0 and params.dice_roll == 5):
 					canvas.addtag_withtag("myCurrentTag", params.pieces[params.dice_pos][rt[1]])
 					#print(canvas.gettags("!"))
-					print("0:0:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
+					#print("0:0:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
 					#canvas.dtag(params.pieces[params.dice_pos][rt[1]], "!")
-					print("1:1:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
+					#print("1:1:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
 					params.active = rt[1]
 					canvas.after(500, self.players[params.dice_pos].makeMove, "myCurrentTag")
 				print("only one out end !")
 			
 		elif event.char == 'n' and params.debug:
+			params.double = False
 			self.change()
 			
 		elif event.char == '':
@@ -337,20 +408,23 @@ class Board:
 	
 	def change(self):
 		params.print_debug_entry_path("Board in change !")
+		print("Params.double : ", params.double)
+		print("params.active : ", params.active)
 		if not params.active == None:
 			canvas.dtag("myCurrentTag", "myCurrentTag")
 			params.active = None
+		if params.double:
+			params.double = False
+			print("Lucky got second chance!")
+			self.dice.move(params.player_pos[self.dice_pos][0], params.player_pos[self.dice_pos][1])
+			params.print_debug_entry_path("Board out off change becuse got second change!")
+			return
 		self.players[self.dice_pos].compress()
 		self.dice_pos = int((self.dice_pos + 1) % 4)
 		params.dice_pos = int((params.dice_pos + 1) % 4)
-		self.dice.move(self.player_pos[self.dice_pos][0], self.player_pos[self.dice_pos][1])
+		self.dice.move(params.player_pos[self.dice_pos][0], params.player_pos[self.dice_pos][1])
 		self.players[self.dice_pos].expand()
 		params.print_debug_entry_path("Board out off change !")
-	
-	def enterEvent(self, event):
-		params.print_debug_entry_path("Board in enterEvent !")
-		pass
-		params.print_debug_entry_path("Board out off enterEvent !")
 	
 	def set_board(self):
 		params.print_debug_entry_path("Board in set_board !")
@@ -406,16 +480,6 @@ class Board:
 		canvas.itemconfig(self.board[10 + cfp2 * 3], fill = "#ffff00")
 		canvas.itemconfig(self.board[10 + cfp2 * 3 + cfp], fill = "#ff0000")
 		
-		"""
-		for i in range(1, cfp):
-			self.board.append(canvas.create_rectangle(self.dx + i * cs, self.dy + cfp_1 * cs, self.dx + (i + 1) * cs, self.dy + cfp_2 * cs, fill = "#ff0000", width = 2))
-		for i in range(1, cfp):
-			self.board.append(canvas.create_rectangle(self.dx + cfp_1 * cs, self.dy + i * cs, self.dx + cfp_2 * cs, self.dy + (i + 1) * cs, fill = "#00ff00", width = 2))
-		for i in range(cfp2_1, cfp_2, -1):
-			self.board.append(canvas.create_rectangle(self.dx + i * cs, self.dy + cfp_1 * cs, self.dx + (i + 1) * cs, self.dy + cfp_2 * cs, fill = "#0000ff", width = 2))
-		for i in range(cfp2_1, cfp_2, -1):
-			self.board.append(canvas.create_rectangle(self.dx + cfp_1 * cs, self.dy + i * cs, self.dx + cfp_2 * cs, self.dy + (i + 1) * cs, fill = "#ffff00", width = 2))
-		"""
 		for i in range(cfp - 1):
 			self.board.append(canvas.create_rectangle(params.win[0][i][0], params.win[0][i][1], params.win[0][i][0] + cs, params.win[0][i][1] + cs, fill = "#ff0000", width = 2))
 		for i in range(cfp - 1):
@@ -426,7 +490,9 @@ class Board:
 			self.board.append(canvas.create_rectangle(params.win[3][i][0], params.win[3][i][1], params.win[3][i][0] + cs, params.win[3][i][1] + cs, fill = "#ffff00", width = 2))
 		
 		for i in range(1, cfp_1):
-			#self.board.append(canvas.create_image(self.dx + (i + 0.17) * cs, self.dy + (cfp_1 + 0.5) * cs, image = params.arrow_images["right"]))
+			indx = len(self.board) - 1
+			#print("ex0 : ", indx)
+			#print("ex1 : ", self.board[indx])
 			self.board.append(self.arrow(self.dx + (i + 0.07) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "#000000", "right"))
 			self.board.append(self.arrow(self.dx + (i - 0.08) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "#ffffff", "right"))
 			self.board.append(self.arrow(self.dx + (i - 0.15) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "#cc0000", "right"))
@@ -444,8 +510,120 @@ class Board:
 			self.board.append(self.arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.15) * cs, 1.5, 1.5, "#cccc00", "up"))
 		params.print_debug_entry_path("	Board out off set_board !")
 	
+	def redraw_board(self):
+		params.print_debug_entry_path("Board in redraw_board !")
+		f = params.cell_size * (params.cells_for_player * 2 + 3)
+		cs = params.cell_size
+		cfp = params.cells_for_player
+		cfp2 = cfp * 2
+		cfp2_1 = cfp2 + 1
+		cfp2_2 = cfp2 + 2
+		cfp2_3 = cfp2 + 3
+		cfp_1 = cfp + 1
+		cfp_2 = cfp + 2
+		cfp_3 = cfp + 3
+		cfp_4 = cfp + 4
+		
+		canvas.coords(self.board[0], self.dx, self.dy, self.dx + f, self.dy + f)
+		canvas.coords(self.board[1], self.dx, self.dy, self.dx + cs * cfp, self.dy + cs * cfp)
+		canvas.coords(self.board[2], self.dx + cfp_3 * cs, self.dy, self.dx + cs * cfp2_3, self.dy + cs * cfp)
+		canvas.coords(self.board[3], self.dx + cfp_3 * cs, self.dy + cfp_3 * cs, self.dx + cs * cfp2_3, self.dy + cs * cfp2_3)
+		canvas.coords(self.board[4], self.dx, self.dy + cfp_3 * cs, self.dx + cs * cfp, self.dy + cs * cfp2_3)
+		canvas.coords(self.board[5], self.dx + cfp * cs, self.dy + cfp * cs, self.dx + cfp_3 * cs, self.dy + cfp_3 * cs)
+		
+		indx = 6
+		#print("rindx : ", indx)
+		for i in range(cfp):
+			canvas.coords(self.board[indx], self.dx + cs * i, self.dy + cs * cfp, self.dx + cs * (i + 1), self.dy + cs * cfp_1)
+			indx += 1
+		for i in range(cfp - 1, -1, -1):
+			canvas.coords(self.board[indx], self.dx + cs * cfp, self.dy + cs * i, self.dx + cs * cfp_1, self.dy + cs * (i + 1))
+			indx += 1
+		canvas.coords(self.board[indx], self.dx + cs * cfp_1, self.dy, self.dx + cs * cfp_2, self.dy + cs)
+		indx += 1
+		
+		#print("rindx : ", indx)
+		for i in range(cfp):
+			canvas.coords(self.board[indx], self.dx + cs * cfp_2, self.dy + cs * i, self.dx + cs * cfp_3, self.dy + cs * (i + 1))
+			indx += 1
+		for i in range(cfp_3, cfp2_3):
+			canvas.coords(self.board[indx], self.dx + cs * i, self.dy + cs * cfp, self.dx + cs * (i + 1), self.dy + cs * cfp_1)
+			indx += 1
+		canvas.coords(self.board[indx], self.dx + cfp2_2 * cs, self.dy + cfp_1 * cs, self.dx + cfp2_3 * cs, self.dy + cfp_2 * cs)
+		indx += 1
+		
+		#print("rindx : ", indx)
+		for i in range(cfp2_2, cfp_2, -1):
+			canvas.coords(self.board[indx], self.dx + i * cs, self.dy + cfp_2 * cs, self.dx + (i + 1) * cs, self.dy + cfp_3 * cs)
+			indx += 1
+		for i in range(cfp_3, cfp2_3):
+			canvas.coords(self.board[indx], self.dx + cs * cfp_2, self.dy + cs * i, self.dx + cs * cfp_3, self.dy + cs * (i + 1))
+			indx += 1
+		canvas.coords(self.board[indx], self.dx + cs * cfp_1, self.dy + cs * cfp2_2, self.dx + cs * cfp_2, self.dy + cs * cfp2_3)
+		indx += 1
+		
+		#print("rindx : ", indx)
+		for i in range(cfp2_2, cfp_2, -1):
+			canvas.coords(self.board[indx], self.dx + cs * cfp, self.dy + cs * i, self.dx + cs * cfp_1, self.dy + cs * (i + 1))
+			indx += 1
+		for i in range(cfp - 1, -1, -1):
+			canvas.coords(self.board[indx], self.dx + cs * i, self.dy + cs * cfp_2, self.dx + cs * (i + 1), self.dy + cs * cfp_3)
+			indx += 1
+		canvas.coords(self.board[indx], self.dx, self.dy + cs * cfp_1, self.dx + cs, self.dy + cs * cfp_2)
+		indx += 1
+		
+		#print("rindx : ", indx)
+		for i in range(cfp - 1):
+			canvas.coords(self.board[indx], params.win[0][i][0], params.win[0][i][1], params.win[0][i][0] + cs, params.win[0][i][1] + cs)
+			indx += 1
+		for i in range(cfp - 1):
+			canvas.coords(self.board[indx], params.win[1][i][0], params.win[1][i][1], params.win[1][i][0] + cs, params.win[1][i][1] + cs)
+			indx += 1
+		for i in range(cfp - 1,):
+			canvas.coords(self.board[indx], params.win[2][i][0], params.win[2][i][1], params.win[2][i][0] + cs, params.win[2][i][1] + cs)
+			indx += 1
+		for i in range(cfp - 1):
+			canvas.coords(self.board[indx], params.win[3][i][0], params.win[3][i][1], params.win[3][i][0] + cs, params.win[3][i][1] + cs)
+			indx += 1
+		
+		#print("rindx : ", indx)
+		for i in range(1, cfp_1):
+			#print("ex0 : ", indx)
+			#print("ex1 : ", self.board[indx])
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i + 0.07) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "right"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i - 0.08) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "right"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i - 0.15) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "right"))
+			indx += 1
+		for i in range(1, cfp_1):
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.07) * cs, 1.5, 1.5, "down"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i - 0.08) * cs, 1.5, 1.5, "down"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i - 0.15) * cs, 1.5, 1.5, "down"))
+			indx += 1
+		for i in range(cfp2_2, cfp_2, -1):
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i - 0.07) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "left"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i + 0.08) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "left"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (i + 0.15) * cs, self.dy + (cfp_1 + 0.5) * cs, 1.5, 1.5, "left"))
+			indx += 1
+		for i in range(cfp2_2, cfp_2, -1):
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i - 0.07) * cs, 1.5, 1.5, "up"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.08) * cs, 1.5, 1.5, "up"))
+			indx += 1
+			canvas.coords(self.board[indx], self.redraw_arrow(self.dx + (cfp_1 + 0.5) * cs, self.dy + (i + 0.15) * cs, 1.5, 1.5, "up"))
+			indx += 1
+		params.print_debug_entry_path("	Board out off redraw_board !")
+	
+	def repos(self):
+		self.players[self.dice_pos].expand()
+	
 	def arrow(self, dx, dy, sx, sy, color, dir = "left"):
-		#params.print_debug_entry_path("	Board in arrow !", dx, dy, sx, sy, color, dir)
+		params.print_debug_entry_path("	Board in arrow !", dx, dy, sx, sy, color, dir)
 		cs4 = params.cell_size // 4
 		if dir == "right":
 			return canvas.create_polygon(dx, dy - cs4 * sy, dx, dy + cs4 * sy, dx + cs4 * sx, dy, dx, dy - cs4 * sy, fill=color)
@@ -458,7 +636,23 @@ class Board:
 		else:
 			print("Nothing to return!")
 			return None
-		#params.print_debug_entry_path("	Board out off arrow !")
+		params.print_debug_entry_path("	Board out off arrow !")
+	
+	def redraw_arrow(self, dx, dy, sx, sy, dir = "left"):
+		params.print_debug_entry_path("	Board in arrow !", dx, dy, sx, sy, dir)
+		cs4 = params.cell_size // 4
+		if dir == "right":
+			return (dx, dy - cs4 * sy, dx, dy + cs4 * sy, dx + cs4 * sx, dy, dx, dy - cs4 * sy)
+		elif dir == "left":
+			return (dx, dy - cs4 * sy, dx, dy + cs4 * sy, dx - cs4 * sx, dy, dx, dy - cs4 * sy)
+		elif dir == "down":
+			return (dx - cs4 * sx, dy, dx + cs4 * sx, dy, dx, dy + cs4 * sx, dx - cs4 * sx, dy)
+		elif dir == "up":
+			return (dx - cs4 * sx, dy, dx + cs4 * sx, dy, dx, dy - cs4 * sy, dx - cs4 * sx, dy)
+		else:
+			print("Nothing to return!")
+			return None
+		params.print_debug_entry_path("	Board out off arrow !")
 	
 	#just a trail code to represent a single cell and piece in it
 	def trail(self):
@@ -561,16 +755,17 @@ class Board:
 
 		
 class Player:
-	def __init__(self, id, dx, dy, color):
-		params.print_debug_entry_path("Player in __init__", id, dx, dy, color)
+	def __init__(self, id, color):
+		params.print_debug_entry_path("Player in __init__", id, color)
 		self.id = id
 		self.color = color
 		#dx = 150
 		#dy = 200
-		self.dx = dx
-		self.dy = dy
-		params.player_pos[self.id][0] = self.dx
-		params.player_pos[self.id][1] = self.dy
+		self.set_my_pos()
+		dx = self.dx
+		dy = self.dy
+		#params.player_pos[self.id][0] = self.dx
+		#params.player_pos[self.id][1] = self.dy
 		self.state = "normal"
 		
 		cs = params.cell_size
@@ -620,6 +815,69 @@ class Player:
 			#print("params.id : ", params.id)
 			params.id += 1
 		params.print_debug_entry_path("Player out off __init__ !")
+	
+	def repos(self):
+		ptc = params.player_compress[self.id]
+		for i in range(4):
+			canvas.coords(params.pieces[self.id][i], self.dx + ptc[i][0], self.dy + ptc[i][1])
+			canvas.itemconfig(self.expaned_pos[i], state = tk.HIDDEN)
+			canvas.itemconfig(params.pieces[self.id][i], image = canvas.images["big"][self.id], tags = (str(self.id * 4 + i), "@-1"))
+	
+	def set_images(self):
+		for i in range(4):
+			canvas.itemconfig(params.pieces[self.id][i], image =  params.images["big"][self.id])
+	
+	def set_my_pos(self):
+		self.dx = params.player_pos[self.id][0]
+		self.dy = params.player_pos[self.id][1]
+	
+	def redraw_player(self):
+		#params.player_pos[self.id][0] = self.dx
+		#params.player_pos[self.id][1] = self.dy
+		self.state = "normal"
+		
+		self.set_my_pos()
+		dx = self.dx
+		dy = self.dy
+		cs = params.cell_size
+		cfp = params.cells_for_player
+		
+		canvas.coords(self.home_site, dx + cs * 1.25, dy + cs * 1.75, dx + cs * 4.75, dy + cs * 4.25)
+		
+		#st = tk.HIDDEN
+		#self.expaned_pos = np.zeros(4, dtype = np.uint8)
+		canvas.coords(self.expaned_pos[0], dx + cs * 0.25, dy + cs * 0.5, dx + cs * 1.75, dy + cs * 1.5)
+		canvas.coords(self.expaned_pos[1], dx + cs * 4.25, dy + cs * 0.5, dx + cs * 5.75, dy + cs * 1.5)
+		canvas.coords(self.expaned_pos[2], dx + cs * 4.25, dy + cs * 4.5, dx + cs * 5.75, dy + cs * 5.5)
+		canvas.coords(self.expaned_pos[3], dx + cs * 0.25, dy + cs * 4.5, dx + cs * 1.75, dy + cs * 5.5)
+		
+		c2 = cfp // 2
+		
+		#piece positions in expanded state
+		params.player_expand[self.id][0][0] = cs
+		params.player_expand[self.id][0][1] = cs * 0.5
+		params.player_expand[self.id][1][0] = cs * (cfp - 1)
+		params.player_expand[self.id][1][1] = cs * 0.5
+		params.player_expand[self.id][2][0] = cs * (cfp - 1)
+		params.player_expand[self.id][2][1] = cs * (cfp - 1.5)
+		params.player_expand[self.id][3][0] = cs
+		params.player_expand[self.id][3][1] = cs * (cfp - 1.5)
+		
+		#piece position in compresed/normal stat+e
+		params.player_compress[self.id][0][0] = cs * (c2 - 0.7)
+		params.player_compress[self.id][0][1] = cs * (c2 - 0.9)
+		params.player_compress[self.id][1][0] = cs * (c2 + 0.4)
+		params.player_compress[self.id][1][1] = cs * (c2 - 0.9)
+		params.player_compress[self.id][2][0] = cs * (c2 + 0.8)
+		params.player_compress[self.id][2][1] = cs * c2
+		params.player_compress[self.id][3][0] = cs * (c2 - 0.3)
+		params.player_compress[self.id][3][1] = cs * c2
+		
+		pte = params.player_expand[self.id]
+		ptc = params.player_compress[self.id]
+		#self.pieces = np.ones(4, dtype = np.int8) * -1
+		for i in range(4):
+			canvas.coords(params.pieces[self.id][i], dx + ptc[i][0], dy + ptc[i][1])
 	
 	def refresh(self, pid):
 		params.print_debug_entry_path("Player in refresh !", pid)
@@ -691,24 +949,57 @@ class Player:
 		#print("pos + 1 : ", pos + 1)
 		#print("len(params.path) : ", len(params.path))
 		#print("int((pos + num) % len(params.path)) : ", int((pos + num) % len(params.path)))
-		self.check_for_active()
+		rt = self.check_for_active()
+		print("here : ", rt)
+		print("here : ", pid, pcid)
+		if rt[0] == "not ok":
+				canvas.after(500, params.change)
+				print("not ok")
+				return
+		elif rt[0] == "ok" and rt[3][0] == pcid:
+			pass
+		elif rt[0] == "still_in":
+			if pcid in (rt[2] + rt[3]):
+				pass
+			else:
+				canvas.after(500, params.change)
+				print("still_in")
+				return
+		elif rt[0] == "still_out":
+			if pcid in rt[3]:
+				pass
+			else:
+				canvas.after(500, params.change)
+				print("still_out")
+				return
+		else:
+			print("Else : ")
 		for i in range(num + 1):
-			print("pos in : ", pos)
+			#print("pos in : ", pos)
 			if pos >= 0:
 				pos = int((pos + 1) % len(params.path))
 				if (pos + 1) == params.path_out[pid]:
 					pos = (pid * -10) -2
 			elif pos < 0:
 				pos = pos - 1
-				if pos  == (pid * -10) + (len(params.win[0]) * -1) - 2 and i == num - 1:
-					canvas.itemconfig( params.pieces[pid][pcid], state = tk.HIDDEN )
-					params.print_debug_entry_path("Player out off with win and return !")
-					return
-				else:
-					pass
+				#if pos  == (pid * -10) + (len(params.win[0]) * -1) - 2 and i == num - 1:
+				#	canvas.itemconfig( params.pieces[pid][pcid], state = tk.HIDDEN )
+				#	params.print_debug_entry_path("Player out off with win and return !")
+				#	return
+				#else:
+				#	pass
 				
-			print("pos out : ", pos)
-		
+			#print("pos out : ", pos)
+		#print("pos : ", pos)
+		#print("pos : ", (pid * -10) + (len(params.win[0]) * -1) - 2)
+		#print(pos < 0 and (pid * -10) + (len(params.win[0]) * -1) - 2 == pos)
+		#print(pos < 0, (pid * -10) + (len(params.win[0]) * -1) - 2 == pos)
+		if pos < 0 and (pid * -10) + (len(params.win[0]) * -1) - 2 == pos:
+			canvas.itemconfig( params.pieces[pid][pcid], state = tk.HIDDEN )
+			params.print_debug_entry_path("Player out off with win and return !")
+			#params.dice_roll = -1
+			params.change()
+			return
 		if pos < 0:
 			pt = params.win[pid][((pos*-1) - 2) - (pid * 10)]
 		else:
@@ -736,53 +1027,51 @@ class Player:
 		params.print_debug_entry_path("Player in check_for_active !")
 		id = params.dice_pos
 		id4 = id * 4
-		active = 0
-		in_home = 0
-		active_items = [0, 0, 0, 0]
+		#active = 0
+		#in_home = 0
+		active_items = []
+		inside_home = [] 
 		for i in range(4):
 			items = canvas.find_withtag(params.pieces[id][i])
-			#print("tags : ", id, id4, i, items)
+			print("tags : ", id, id4, i, items)
 			tags = canvas.gettags(items[0])
-			#print("tags : ", tags)
+			print("tags : ", tags)
 			try:
 				pos = int(tags[1].split("@")[1])
 			except:
 				pos = int(tags[2].split("@")[1])
 			num = params.dice_roll
-			#print("_:", pos, num)
+			print("_:", pos, num)
 			if pos == -1:
-				in_home += 1
-				active_items[i] -= 1
+				#in_home += 1
+				inside_home.append(i)
 				continue
-			for j in range(num):
-				#print("pos in : ", pos)
+			for j in range(num+1):
+				print("pos in : ", pos)
 				if pos >= 0:
 					pos = int((pos + 1) % len(params.path))
 					if (pos + 1) == params.path_out[id]:
 						pos = (id * -10) -2
+					print("pos btn0 : ", pos)
 				elif pos < 0:
 					pos = pos - 1
-					if pos  == (id * -10) + (len(params.win[0]) * -1) - 2 and i == num - 1:
-						pass#active += 1
-					else:
-						active -= 1
-						active_items[i] -= 1
-						print("one found !")
-						break
-			active += 1
-			#print("i : ", i)
-			active_items[i] += 1
-		#print("Active_items : ", active_items)
-		#print("In_home : ", in_home)
-		#print("Active : ", active)
-		if active == 1:
-			for i in range(4):
-				if active_items[i] == 1:
-					return ["ok", i, in_home]
-		elif (num == 5 and in_home > 0) or active > 0:
-			return ["ok", None, in_home] 
+				print("pos out : ", pos)
+			print("pos:__:", pos  + 2 + (id * -10) )
+			if pos  + 2 + (id * 10) > -8:
+				#active += 1
+				print("i : ", i)
+				active_items.append(i)
+		print("Active_items : ", active_items)
+		print("In_home : ", inside_home)
+		print("Active : ", active_items)
+		if len(active_items) == 1:
+			return ["ok", active_items[0], inside_home, active_items] # only one piece out so can be moved automatically
+		elif (num == 5 and len(inside_home) > 0):
+			return ["still_in", None, inside_home, active_items] # reamain still because there are more that 0 pieces inside the home and dice_roll is 5 i.e dice trow is 6
+		elif len(active_items) > 0:
+			return ["still_out", None, inside_home, active_items] # ramain still because more than one pieces outside
 		else:
-			return ["not ok", None, in_home]
+			return ["not ok", None, inside_home, active_items]
 		params.print_debug_entry_path("Player out off check_for_active !")
 	
 	def catch_n_sendBack_enimies(self, pos, id):
@@ -826,11 +1115,12 @@ class Player:
 		canvas.itemconfig(params.pieces[pid][pcid], image = params.images["big"][pid])
 		params.piece_size[pid][pcid] = 0
 		self.refresh(pid)
+		params.double = True
 		params.print_debug_entry_path("Player out off sendBack !")
 	
 	def makeMove(self, event):
 		params.print_debug_entry_path("Player in makeMove !", event)
-		if not params.focused:
+		if not params.focused and not params.game_started:
 			params.print_debug_entry_path("Player is out off makeMove because canvas is not focused!")
 			return
 		print("Player in makeMove !", event)
@@ -849,12 +1139,13 @@ class Player:
 		if len(items) > 1:
 			print("	Problem !")
 		tags = canvas.gettags(params.current)
-		print("tags : ", tags)
+		print("tags : ", tags, params.dice_pos)
 		id = int(tags[0])
 		pid = id //4
 		pcid = int(id % 4)
 		if not pid == params.dice_pos:
 			params.print_debug_entry_path("Player out off makeMove with return because selected piece is not belong to current player !")
+			print("!00!")
 			return
 		try:
 			pos = int(tags[2].split("@")[1])
@@ -867,6 +1158,7 @@ class Player:
 				params.change()
 			else:
 				params.print_debug_entry_path("Player out off makeMove with return !")
+				print("!00!")
 				return
 			#self.bringOut(id)
 		else:
@@ -1005,6 +1297,16 @@ class Dice:
 		random.seed(time.time())
 		params.print_debug_entry_path("Dice out off __init__ !")
 	
+	def redraw(self):
+		for i in range(6):
+			canvas.coords(self.dice_roll, self.pos[0], self.pos[1])
+			coords.itemconfig(self.dice_roll, image = self.get_images(i, 0.75, 0.75), state = tk.HIDDEN)
+	
+	def repos(self):
+		self.pos = [params.cell_size * params.cells_for_player // 2, params.cell_size * params.cells_for_player // 2]
+		for i in range(6):
+			canvas.coords(self.dice_roll, self.pos[0], self.pos[1])
+	
 	def get_image(self, id, sx, sy):
 		params.print_debug_entry_path("Dice in get_image !", id, sx, sy)
 		image = Image.open(os.path.join(params.base_dir, "dice", self.images[id]))
@@ -1025,8 +1327,10 @@ class Dice:
 		else:
 			roll = int(int(random.random() * 1000) % 6)
 			params.dice_roll = roll
-		print("dx_dy : ", self.dx, self.dy)
-		print("__---__ : ", params.dice_roll, self.dice_roll[params.dice_roll])
+		if params.dice_roll == 5:
+			params.double = True
+		#print("dx_dy : ", self.dx, self.dy)
+		#print("__---__ : ", params.dice_roll, self.dice_roll[params.dice_roll])
 		canvas.coords(self.dice_roll[params.dice_roll], self.dx + self.pos[0], self.dy + self.pos[1])
 		canvas.itemconfig( self.dice_roll[params.dice_roll], state = tk.NORMAL )
 		params.print_debug_entry_path("Dice out off roll_the_dice !")
@@ -1038,45 +1342,48 @@ class Dice:
 			params.dice_roll = -1
 		self.dx = dx
 		self.dy = dy
-		print("dx_dy : ", self.dx, self.dy)
+		#print("dx_dy : ", self.dx, self.dy)
 		params.print_debug_entry_path("Dice out off move !")
 
 class GUI:
 	def __init__(self):
-		self.top = tk.Toplevel()
-		self.top.title("Menu")
-		self.top.focus_set()
-		self.top.lift()
-		self.top.attributes('-topmost', 'true')
-		x=root.winfo_rootx()+params.marginX
-		y=root.winfo_rooty()+params.marginY
-		x1=x+numberOfCellsInRow*params.cellSize
-		y1=y+numberOfCellsInRow*params.cellSize
-		self.top.geometry("+" + str(x1) + "+" + str(y) + "")
-		self.top.protocol("WM_DELETE_WINDOW", self.nothing)
-		self.top.protocol('WM_TAKE_FOCUS', self.focusIn())
-		#self.top.bind("FocusIn", self.focusIn)
-		self.top.bind("FocusOut", self.focusOut)
+		self.mx = 15
+		self.my = 15
+		self.width = 0
+		self.height = 0
 		
-		self.font1 = tkFont.Font(root=self.top, size=20)
-		params.menuFont1 = self.font1 
-		self.mx = 75
-		self.my = 100
+		self.font1 = tkFont.Font(root=root, size=20)
+		params.menuFont1 = self.font1
+		self.font2 = tkFont.Font(root=root, size=15)
+		params.menuFont2 = self.font2
+		self.font3 = tkFont.Font(root=root, size=15)
+		params.menuFont3 = self.font3
+		self.font4 = tkFont.Font(root=root, size=20)
+		params.menuFont4 = self.font4
 		
-		self.master = tk.Canvas(self.top, width = 300, height = 400)
-		self.master.pack()
-		
-		#print("toplevel is created !")
 		self.menu()
-		self.top.withdraw()
-		self.hidden = True
+		self.Options()
+		self.showMenu()
+		
 		params.toggleMenu = self.toggle
+		self.hidden = False
 	
-	def focusIn(self):
-		print("focused !1")
-	
-	def focusOut(self):
-		print("out off focus !1")
+	def reconfig(self):
+		#x = root.winfo_rootx()+ params.width - 4
+		x = root.winfo_rootx() - 4
+		y = root.winfo_rooty() - 31
+		if x + self.width + params.width + 10 <= params.screen_width:
+			x += params.width
+		else:
+			x -= (self.width + 8)
+		#print("board : ", x, y)
+		if y < 0:
+			y= str(y)
+		else:
+			y = "+" + str(y)
+		#print("+" + str(x) + "+" + str(y) + "")
+		self.top.geometry("" + str(self.width) + "x" + str(self.height) + "+" + str(x) + str(y) + "")
+		self.top.lift()
 	
 	def nothing(self):
 		pass
@@ -1090,30 +1397,52 @@ class GUI:
 			self.hidden = True
 	
 	def menu(self):
+		self.master = tk.Toplevel()
+		#self.master.withdraw()
+		self.master.title("Menu")
+		#self.top.attributes('-topmost', 'true')
+		self.width1 = 200
+		self.height1 = 320
+		#self.reconfig()
+		self.master.protocol("WM_DELETE_WINDOW", self.nothing)
+		self.top = self.master
+		
 		self.newGame = tk.Button(self.master, text="New Game", command= self.freshStartGame)
 		self.newGame.place(x = self.mx, y = self.my)
 		params.styleButton(self.newGame, 1)
 		
-		self.options = tk.Button(self.master, text="Options", command= self.freshStartGame)
+		self.options = tk.Button(self.master, text="Options", command= self.showOptions)
 		self.options.place(x = self.mx, y = self.my+75)
 		params.styleButton(self.options, 1)
 		
-		self.help = tk.Button(self.master, text="Help", command= self.freshStartGame)
+		self.help = tk.Button(self.master, text="Help", command= self.help)
 		self.help.place(x = self.mx, y = self.my+150)
 		params.styleButton(self.help, 1)
 		
-		self.about = tk.Button(self.master, text="About", command= self.freshStartGame)
+		self.about = tk.Button(self.master, text="About", command= self.about)
 		self.about.place(x = self.mx, y = self.my+225)
 		params.styleButton(self.about, 1)
 	
 	def showMenu(self):
-		pass
-	
-	def hideMenu(self):
-		pass
+		self.master.deiconify()
+		self.top.withdraw()
+		self.top = self.master
+		self.width = self.width1
+		self.height = self.height1
+		self.reconfig()
 	
 	def freshStartGame(self):
-		pass
+		self.options.config(state = tk.DISABLED)
+		params.game_started = True
+		#board.dice.repos()
+		board.setPlayers()
+		board.players[params.dice_pos].compress()
+		board.dice_pos = 0
+		params.dice_pos = 0
+		board.dice.move(params.player_pos[params.dice_pos][0], params.player_pos[params.dice_pos][1])
+		board.players[params.dice_pos].expand()
+		#board.repos()
+		params.toggle()
 	
 	def Stop(self):
 		pass
@@ -1128,26 +1457,165 @@ class GUI:
 		params.auto = False
 	
 	def Options(self):
-		pass
+		self.master2 = tk.Toplevel()
+		self.master2.title("Set Options!")
+		self.top = self.master2
+		self.master2.withdraw()
+		#self.top.attributes('-topmost', 'true')
+		self.width2 = 250
+		self.height2 = 320
+		#self.reconfig()
+		self.master2.protocol("WM_DELETE_WINDOW", self.nothing)
+		
+		self.scrollbar = tk.Scrollbar(self.master2, orient=tk.VERTICAL)
+		self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+		self.canvas = tk.Canvas(self.master2, width = self.width2, height = self.height2, yscrollcommand = self.scrollbar.set, scrollregion=(0, 0, self.width2, 1000))
+		self.canvas.pack()
+		self.scrollbar.config(command = self.canvas.yview)
+		
+		self.backUp = tk.Button(self.canvas, text = "Back", command = self.showMenu)
+		self.canvas.create_window(self.mx + 10, self.my, window = self.backUp, anchor = tk.NW)
+		params.styleButton(self.backUp, 1)
+		
+		
+		self.debug = Int()
+		self.debug.set(0)
+		self.debug.trace("w", self.callback_1)
+		self.debugState = tk.Checkbutton(self.canvas, text = "DEBUG(" + u"\u2714" + "/" + u"\u2718" + ")", variable = self.debug)
+		self.canvas.create_window(self.mx, self.my + 75, window = self.debugState, anchor = tk.NW)
+		params.styleCheckbutton(self.debugState, 1)
+		
+		self.auto = Int()
+		self.auto.set(0)
+		self.auto.trace("w", self.callback_2)
+		self.autoState = tk.Checkbutton(self.canvas, text = "AUTO(" + u"\u2714" + "/" + u"\u2718" + ")", variable = self.auto)
+		self.canvas.create_window(self.mx, self.my + 110, window = self.autoState, anchor = tk.NW)
+		params.styleCheckbutton(self.autoState, 1)
+		
+		self.widthLabel = tk.Label(self.canvas, text = "Canvas_width")
+		self.canvas.create_window(self.mx - 5, self.my + 155, window = self.widthLabel, anchor = tk.NW)
+		params.styleLabel(self.widthLabel, 1)
+		self.widthVar = Int()
+		self.widthVar.set(params.width)
+		self.widthVar.trace("w", self.callback1)
+		self.widthEntry = tk.Entry(self.canvas, textvariable = self.widthVar)
+		self.canvas.create_window(self.mx + 155, self.my + 155, window = self.widthEntry, anchor = tk.NW)
+		params.styleEntry(self.widthEntry ,1)
+		
+		self.heightLabel = tk.Label(self.canvas, text = "Canvas_height")
+		self.canvas.create_window(self.mx - 5, self.my + 200, window = self.heightLabel, anchor = tk.NW)
+		params.styleLabel(self.heightLabel, 1)
+		self.heightVar = Int()
+		self.heightVar.set(params.height)
+		self.heightVar.trace("w", self.callback2)
+		self.heightEntry = tk.Entry(self.canvas, textvariable = self.heightVar)
+		self.canvas.create_window(self.mx + 155, self.my + 200, window = self.heightEntry, anchor = tk.NW)
+		params.styleEntry(self.heightEntry ,1)
+		
+		self.cellSizeLabel = tk.Label(self.canvas, text = "cell_size")
+		self.canvas.create_window(self.mx - 5, self.my + 250, window = self.cellSizeLabel, anchor = tk.NW)
+		params.styleLabel(self.cellSizeLabel, 1)
+		self.cellSizeVar = Int()
+		self.cellSizeVar.set(params.cell_size)
+		self.cellSizeVar.trace("w", self.callback3)
+		self.cellSizeEntry = tk.Entry(self.canvas, textvariable = self.cellSizeVar)
+		self.canvas.create_window(self.mx + 155, self.my + 250, window = self.cellSizeEntry, anchor = tk.NW)
+		params.styleEntry(self.cellSizeEntry ,1)
+		
+		self.cellsForPlayerLabel = tk.Label(self.canvas, text = "cells_for_players")
+		self.canvas.create_window(self.mx - 5, self.my + 300, window = self.cellsForPlayerLabel, anchor = tk.NW)
+		params.styleLabel(self.cellsForPlayerLabel, 1)
+		self.cellsForPlayerVar = Int()
+		self.cellsForPlayerVar.set(params.cells_for_player)
+		self.cellsForPlayerVar.trace("w", self.callback4)
+		self.cellsForPlayerEntry = tk.Entry(self.canvas, textvariable = self.cellsForPlayerVar)
+		self.canvas.create_window(self.mx + 155, self.my + 300, window = self.cellsForPlayerEntry, anchor = tk.NW)
+		params.styleEntry(self.cellsForPlayerEntry ,1)
+		
+		self.backDown = tk.Button(self.canvas, text = "Back", command = self.showMenu)
+		self.canvas.create_window(self.mx + 10, self.my + 500, window = self.backDown, anchor = tk.NW)
+		params.styleButton(self.backDown, 1)
+		
+		#print("self.canvas.bbox(tk.ALL) : ", self.canvas.bbox(tk.ALL))
+		#You can use the bbox method to get a bounding box for a given object, or a group of objects;
+		#canvas.bbox(ALL) returns the bounding box for all objects on the canvas:
+		print("canvas_scrollbar0 : ", self.canvas.bbox(tk.ALL))
+		self.canvas.configure(scrollregion=self.canvas.bbox(tk.ALL))
 	
 	def showOptions(self):
-		pass
+		self.master2.deiconify()
+		self.top.withdraw()
+		self.top = self.master2
+		self.width = self.width2
+		self.height = self.height2
+		self.reconfig()
 	
-	def hideOptions(self):
-		pass
+	def callback_1(self, *args):
+		print("debug : ", self.debug.get())
+		if int(self.debug.get()) == 1:
+			params.debug = True
+		else:
+			params.debug = False
+	
+	def callback_2(self, *args):
+		print("auto : ", self.auto.get())
+		if int(self.auto.get()) == 1:
+			params.auto = True
+		else:
+			params.auto = False
+	
+	def callback1(self, *args):
+		params.width = int(self.widthVar.get())
+		canvas.config(width = self.widthVar.get())
+		print("redraw_completed1!")
+	
+	def callback2(self, *args):
+		params.height = self.heightVar.get()
+		canvas.config(height = self.heightVar.get())
+		print("redraw_completed2!")
+	
+	def callback3(self, *args):
+		params.cell_size = self.cellSizeVar.get()
+		params.set_player_pos()
+		params.set_extra_path()
+		params.setImages(canvas)
+		board.redraw_board()
+		for i in range(4):
+			board.players[i].set_images()
+			board.players[i].redraw_player()
+		print("redraw_completed3!", type(self.cellSizeVar.get()))
+	
+	def callback4(self, *args):
+		params.cells_for_player = self.cellsForPlayerVar.get()
+		params.set_player_pos()
+		params.set_extra_path()
+		params.setImages(canvas)
+		board.redraw_board()
+		for i in range(4):
+			board.players[i].set_images()
+			board.players[i].redraw_player()
+		print("redraw_completed4!")
+	
+	def help(self):
+		print("Help!")
+	
+	def about(self):
+		print("About!")
 
-def on_focus_in(event):
-	#params.focused = True
-	print("Focused!0", event.widget)
 
-def on_focus_out(event):
-	#params.focused = False
-	print("out off focus!0", event.widget)
+def on_configure(event):
+	gui.reconfig()
 
 params = Params()
+
 root = tk.Tk()
+params.screen_width = root.winfo_screenwidth()
+params.screen_height = root.winfo_screenheight()
 root.title("my Ludo Game")
-canvas = tk.Canvas(root, width = params.width, height = params.height)
+root.geometry("+0+0")
+root.bind("<Configure>", on_configure)
+
+canvas = tk.Canvas(root, width = params.width, height = params.height, bg="#666666")
 canvas.pack()
 canvas.focus_set()
 params.setImages(canvas)
@@ -1155,12 +1623,12 @@ params.setImages(canvas)
 gui = GUI()
 board = Board(params.marginX, params.marginY)
 
+print("tk.StringVar : ", tk.StringVar)
 #plr = Player(0, params.marginX, params.marginY, "#ff0000")
 #plr.expand()
 #dice = Dice()
+params.debug_roll = test.test1[:]
 
 params.setGUI()
-root.bind("<FocusIn>", on_focus_in)
-root.bind("<FocusOut>", on_focus_out)
 #root.protocol('WM_TAKE_FOCUS', on_focus_in())
 root.mainloop()
