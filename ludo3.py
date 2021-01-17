@@ -38,6 +38,7 @@ class Params:
 		self.win = np.zeros((4, self.cells_for_player - 1, 2), dtype = np.uint16)
 		self.set_path()
 		self.change = None
+		self.testing = False
 		self.path_out = np.asarray([
 			1,
 			2 + self.cells_for_player * 2,
@@ -56,8 +57,9 @@ class Params:
 			self.dice_roll = 1
 		else:
 			self.dice_roll = -1
-		self.debug_roll = [int(i % 6) for i in range(50)]
-		#print(self.debug_roll)
+		self.debug_roll = [int(int(random.random()*1000) % 6) for i in range(50)]
+		if 6 not in self.debug_roll:
+			self.debug_roll = [int(random.random()*1000 % 6) for i in range(50)]
 		self.roll_id = 0
 		self.dice_pos = 0
 		self.active = None
@@ -215,7 +217,8 @@ class Params:
 	
 	def print_debug_entry_path(self, *info):
 		if self.debug:
-			print(info)
+			print(" >>> ", end="")
+			print(*info)
 	
 	def change(self):
 		self.change()
@@ -254,7 +257,10 @@ class Board:
 		self.checkKey(event.char)
 	
 	def checkKey(self, key):
+		params.print_debug_entry_path("")
+		params.print_debug_entry_path("")
 		params.print_debug_entry_path("Board in keyEvent !")
+		params.print_debug_entry_path("player "+str(self.dice_pos) + " == >> ")
 		#print(event.char)
 		#print(event.keycode)
 		#print(event.char == 'r')
@@ -264,22 +270,22 @@ class Board:
 			if params.dice_roll == 5:
 				params.double = True
 			rt = self.players[self.dice_pos].check_for_active()
-			print(rt)
+			#print(rt)
 			if rt[0] == "not ok":
 				#print(time.time())
 				#time.sleep(1)
 				#print(time.time())
 				canvas.after(500, params.change)
 			elif rt[0] == "ok" and not rt[1] == None:
-				print("Only on out!")
-				print("pid : ", params.dice_pos, " pcid or rt[1] : ", rt[1])
-				print("in the home or rt[2]", rt[2])
+				#print("Only on out!")
+				#print("pid : ", params.dice_pos, " pcid or rt[1] : ", rt[1])
+				#print("in the home or rt[2]", rt[2])
 				if not (rt[2] > 0 and params.dice_roll == 5):
 					canvas.addtag_withtag("myCurrentTag", params.pieces[params.dice_pos][rt[1]])
 					#print(canvas.gettags("!"))
-					print("0:0:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
+					#print("0:0:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
 					#canvas.dtag(params.pieces[params.dice_pos][rt[1]], "!")
-					print("1:1:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
+					#print("1:1:", canvas.gettags(params.pieces[params.dice_pos][rt[1]]))
 					params.active = rt[1]
 					canvas.after(500, self.players[params.dice_pos].makeMove, "myCurrentTag")
 			elif rt[0] == "keep" and params.auto:
@@ -290,11 +296,11 @@ class Board:
 				params.active  = choice
 				canvas.after(500, self.players[params.dice_pos].makeMove, "myCurrentTag")
 			elif rt[0] == "change":
-				print("inside the chnage!")
+				#print("inside the chnage!")
 				canvas.addtag_withtag("myCurrentTag", params.pieces[params.dice_pos][rt[1]])
 				params.active  = rt[1]
 				canvas.after(500, self.players[params.dice_pos].makeMove, "myCurrentTag")
-			print("only one out end !")
+			#print("only one out end !")
 			
 		elif key == 'n' and params.debug:
 			self.change()
@@ -318,7 +324,7 @@ class Board:
 		if params.double:
 			self.dice.move(self.player_pos[self.dice_pos][0], self.player_pos[self.dice_pos][1])
 			params.double = False
-			print("Got second Chance! LUCKKY!")
+			#print("Got second Chance! LUCKKY!")
 			if params.auto:
 				self.checkKey("r")
 			return
@@ -440,7 +446,7 @@ class Board:
 		elif dir == "up":
 			return canvas.create_polygon(dx - cs4 * sx, dy, dx + cs4 * sx, dy, dx, dy - cs4 * sy, dx - cs4 * sx, dy, fill=color)
 		else:
-			print("Nothing to return!")
+			#print("Nothing to return!")
 			return None
 		#params.print_debug_entry_path("	Board out off arrow !")
 	
@@ -449,7 +455,7 @@ class Board:
 		params.print_debug_entry_path("	Board in trail !")
 		self.r = canvas.create_rectangle(self.dx, self.dy, self.dx + params.cell_size, self.dy + params.cell_size, fill="red")
 		image = Image.open(os.path.join(params.base_dir, "images", "yellowPieceAlpha.png"))
-		print(image.size)
+		#print(image.size)
 		x = params.cell_size * 0.5
 		y = x * image.size[1] / image.size[0]
 		image = image.resize((int(x), int(y)), Image.ANTIALIAS)
@@ -458,12 +464,12 @@ class Board:
 		arg = 1
 		size = "middle"
 		for i in range(arg):
-			print(self.dx)
-			print(params.piece_pos[arg - 1][i][0])
-			print(self.dy)
-			print(params.piece_pos[arg - 1][i][1])
-			print(self.dx + params.piece_pos[arg - 1][i][0])
-			print(self.dy + params.piece_pos[arg - 1][i][1])
+			#print(self.dx)
+			#print(params.piece_pos[arg - 1][i][0])
+			#print(self.dy)
+			#print(params.piece_pos[arg - 1][i][1])
+			#print(self.dx + params.piece_pos[arg - 1][i][0])
+			#print(self.dy + params.piece_pos[arg - 1][i][1])
 			self.imgs.append(canvas.create_image(self.dx + params.piece_pos[arg - 1][i][0], self.dy + params.piece_pos[arg - 1][i][1], image = params.images[size][3]))
 		params.print_debug_entry_path("Player out off !")
 	
@@ -661,7 +667,7 @@ class Player:
 		pcid = int(id % 4)
 		item = params.pieces[pid][pcid]
 		tags = canvas.gettags(item)
-		print("__:__", item, tags, params.dice_roll)
+		#print("__:__", item, tags, params.dice_roll)
 		try:
 			pos = int(tags[2].split("@")[1])
 		except:
@@ -673,32 +679,32 @@ class Player:
 			return
 		old_pos = pos
 		#print("pos : ", pos)
-		print("pos + 1 : ", pos + 1)
+		#print("pos + 1 : ", pos + 1)
 		#print("len(params.path) : ", len(params.path))
 		#print("int((pos + num) % len(params.path)) : ", int((pos + num) % len(params.path)))
 		self.check_for_active()
 		for i in range(num + 1):
-			print("pos in : ", pos)
+			#print("pos in : ", pos)
 			if pos >= 0:
 				pos = int((pos + 1) % len(params.path))
-				print("new_pos : ", pos)
+				#print("new_pos : ", pos)
 				if (pos + 1) == params.path_out[pid]:
 					pos = (pid * -10) -2
 			elif pos < 0:
 				pos = pos - 1
-				print("new_pos : ", pos)
+				#print("new_pos : ", pos)
 				#print("(pid * -10) + (len(params.win[0]) * -1) - 2 : ", (pid * -10) + (len(params.win[0]) * -1) - 2)
 				if pos  == (pid * -10) + (len(params.win[0]) * -1) - 2 and i == num :
 					canvas.itemconfig( params.pieces[pid][pcid], state = tk.HIDDEN )
-					print(pid, id, "dice wins!")
+					#print(pid, id, "dice wins!")
 					params.print_debug_entry_path("Player out off with win and return !")
 					return "ok"
 				else:
 					print("else condition !")
 			if pos == -8:
-				print("can't play this move !")
+				#print("can't play this move !")
 				return "cmm"#"cant make move"
-			print("pos out : ", pos)
+			#print("pos out : ", pos)
 		"""
 		if pos  == (pid * -10) + (len(params.win[0]) * -1) - 2 and i == num - 1:
 			canvas.itemconfig( params.pieces[pid][pcid], state = tk.HIDDEN )
@@ -706,12 +712,12 @@ class Player:
 			params.print_debug_entry_path("Player out off with win and return !")
 			return "ok"
 		"""
-		print("__:_:__ : ", id, pid, pcid, old_pos, pos)
+		#print("__:_:__ : ", id, pid, pcid, old_pos, pos)
 		if pos < 0:
 			pt = params.win[pid][((pos*-1) - 2) - (pid * 10)]
 		else:
 			pt = params.path[pos]
-		print("__:_:__ : ", id, pid, pcid, old_pos, pos, pt)
+		#print("__:_:__ : ", id, pid, pcid, old_pos, pos, pt)
 		
 		#print("coords : ", canvas.coords(params.pieces[pid][pcid]))
 		canvas.coords(params.pieces[pid][pcid], pt[0], pt[1])
@@ -839,7 +845,7 @@ class Player:
 	
 	def makeMove(self, event):
 		params.print_debug_entry_path("Player in makeMove !", event)
-		print("Player in makeMove !", event)
+		#print("Player in makeMove !", event)
 		if params.dice_roll == -1:
 			params.print_debug_entry_path("Player out off makeMove with return !")
 			return 
@@ -848,14 +854,14 @@ class Player:
 		else:
 			params.current = "myCurrentTag"
 		#	return
-		print("params.current : ", params.current)
+		#print("params.current : ", params.current)
 		
-		print(canvas.find_withtag(params.current))
+		#print(canvas.find_withtag(params.current))
 		items = canvas.find_withtag(params.current)
 		if len(items) > 1:
 			print("	Problem !")
 		tags = canvas.gettags(params.current)
-		print("tags : ", tags)
+		#print("tags : ", tags)
 		id = int(tags[0])
 		pid = id //4
 		pcid = int(id % 4)
@@ -874,7 +880,7 @@ class Player:
 			#self.bringOut(id)
 		else:
 			rt = self.move(id, params.dice_roll)
-			print("move returns : ", rt)
+			#print("move returns : ", rt)
 			if rt == "ok":
 				params.change()
 			elif rt == "cmm":
@@ -889,7 +895,7 @@ class Player:
 	def adjust(self, item, old_path):
 		params.print_debug_entry_path("Player in adjust !" , item, old_path)
 		tags = canvas.gettags(item)
-		print("tags : ", tags)
+		#print("tags : ", tags)
 		id = int(tags[0])
 		player_id = id // 4
 		piece_id = int(id % 4)
@@ -1027,15 +1033,15 @@ class Dice:
 		if not params.dice_roll == -1:
 			params.print_debug_entry_path("Dice out off roll_the_dice with return !")
 			return
-		if params.debug or params.auto:
-			params.dice_roll = params.debug_roll[params.roll_id]
+		if params.debug or params.testing:
+			params.dice_roll = params.debug_roll[int(params.roll_id%len(params.debug_roll))]
 			params.roll_id += 1
 		else:
 			roll = int(int(random.random() * 1000) % 6)
 			params.dice_roll = roll
 		params.record_file.write(str(params.dice_roll) + ", ")
-		print("dx_dy : ", self.dx, self.dy)
-		print("__---__ : ", params.dice_roll, self.dice_roll[params.dice_roll])
+		#print("dx_dy : ", self.dx, self.dy)
+		#print("__---__ : ", params.dice_roll, self.dice_roll[params.dice_roll])
 		canvas.coords(self.dice_roll[params.dice_roll], self.dx + self.pos[0], self.dy + self.pos[1])
 		canvas.itemconfig( self.dice_roll[params.dice_roll], state = tk.NORMAL )
 		params.print_debug_entry_path("Dice out off roll_the_dice !")
@@ -1047,36 +1053,44 @@ class Dice:
 			params.dice_roll = -1
 		self.dx = dx
 		self.dy = dy
-		print("dx_dy : ", self.dx, self.dy)
+		#print("dx_dy : ", self.dx, self.dy)
 		params.print_debug_entry_path("Dice out off move !")
 
 class GUI:
 	def __init__(self):
 		pass
 
-params = Params()
-root = tk.Tk()
-root.title("my Ludo Game")
-canvas = tk.Canvas(root, width = params.canvas_width, height = params.canvas_height)
-canvas.pack()
-canvas.focus_set()
-params.setImages(canvas)
+def on_closing():
+	params.record_file.close()
+	root.destroy()
 
-board = Board(params.marginX, params.marginY)
-#plr = Player(0, params.marginX, params.marginY, "#ff0000")
-#plr.expand()
-#dice = Dice()
-import test
+if __name__ == "__main__":
+	params = Params()
+	root = tk.Tk()
+	root.title("my Ludo Game")
+	root.protocol("WM_DELETE_WINDOW", on_closing)
+	canvas = tk.Canvas(root, width = params.canvas_width, height = params.canvas_height)
+	canvas.pack()
+	canvas.focus_set()
+	params.setImages(canvas)
 
-#params.debug_roll = test.test5[:]
-#params.debug = True
+	board = Board(params.marginX, params.marginY)
+	#plr = Player(0, params.marginX, params.marginY, "#ff0000")
+	#plr.expand()
+	#dice = Dice()
+	#import test
 
-params.debug_roll = test.test_old1[:]
-params.auto = True
+	#params.debug_roll = test.test5[:]
+	#params.debug = True
 
-params.record_file = open(os.path.join( params.base_dir, "record.txt"), "w")
-#params.record_file.write("__:__:__\n__:__:__\n__:__:__\n")
+	#params.debug_roll = test.test_old1[:]
+	params.auto = True
 
-canvas.after(500, board.checkKey, "r")
+	#params.record_file = open(os.path.join( params.base_dir, "record.txt"), "w")
+	params.record_file = open("record.txt", "w")
+	#print("file contents : ", params.record_file.read())
+	#params.record_file.write("__:__:__\n__:__:__\n__:__:__\n")
 
-root.mainloop()
+	canvas.after(500, board.checkKey, "r")
+
+	root.mainloop()
